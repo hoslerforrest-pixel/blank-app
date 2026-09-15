@@ -9,7 +9,7 @@ import streamlit as st
 st.set_page_config(page_title="Mentee-Mentor pairing", page_icon="🤝", layout="wide")
 
 # ==========================================
-# LOGIN SCREEN LOGIC
+# LOGIN SCREEN
 # ==========================================
 def check_password():
     """Returns `True` if the user had the correct password."""
