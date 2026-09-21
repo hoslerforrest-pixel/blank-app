@@ -14,7 +14,6 @@ st.set_page_config(page_title="Mentee-Mentor pairing", page_icon="🤝", layout=
 def check_password():
     """Returns `True` if the user had the correct password."""
     def password_entered():
-        # You can change the password right here
         if st.session_state["password"] == "WreckEm":
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Hides the password from session state for security
@@ -22,18 +21,15 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First time opening the app: show password input
         st.title("🔒 Admin Login Required")
         st.text_input("Please enter the password to access the matchmaker:", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        # Incorrect password: show input again with an error message
         st.title("🔒 Admin Login Required")
         st.text_input("Please enter the password to access the matchmaker:", type="password", on_change=password_entered, key="password")
         st.error("😕 Password incorrect. Please try again.")
         return False
     else:
-        # Password correct: allow the app to load
         return True
 
 # ==========================================
@@ -52,28 +48,47 @@ if check_password():
     def calculate_score(mentee, mentor):
         score = 0
 
-        # 1. Major Match
+        # 1. Core Alignment: Major Match (Baseline 50 points)
         if str(mentee["Major"]).strip().lower() == str(mentor["Major"]).strip().lower():
             score += 50
+            # Preference Boost (Extra 30 points if it is a priority)
             if mentee["Pref_Major"]:
-                score += 20
-
-        # 2. Hometown Match
-        if mentee["Pref_Hometown"]:
-            mentee_town = str(mentee["Hometown"]).strip().lower()
-            mentor_town = str(mentor["Hometown"]).strip().lower()
-            if mentee_town in mentor_town or mentor_town in mentee_town:
                 score += 30
 
-        # 3. Hobbies Match (NLP Similarity)
-        if mentee["Pref_Hobbies"]:
+        # 2. Soft Skills: Hometown Match (Baseline 10 points)
+        mentee_town = str(mentee["Hometown"]).strip().lower()
+        mentor_town = str(mentor["Hometown"]).strip().lower()
+        
+        # Ensure neither field is completely blank before comparing
+        if mentee_town and mentor_town and mentee_town != "nan" and mentor_town != "nan":
+            if mentee_town in mentor_town or mentor_town in mentee_town:
+                score += 10
+                # Preference Boost (Extra 20 points if it is a priority)
+                if mentee["Pref_Hometown"]:
+                    score += 20
+
+        # 3. Soft Skills: Hobbies NLP Match (Up to 10 points)
+        mentee_hobbies = str(mentee["Hobbies"])
+        mentor_hobbies = str(mentor["Hobbies"])
+        
+        # Ensure neither field is completely blank before processing
+        if mentee_hobbies != "nan" and mentor_hobbies != "nan":
             try:
                 vectorizer = TfidfVectorizer(stop_words="english")
-                tfidf = vectorizer.fit_transform([str(mentee["Hobbies"]), str(mentor["Hobbies"])])
+                tfidf = vectorizer.fit_transform([mentee_hobbies, mentor_hobbies])
                 sim = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
-                score += sim * 30
+                
+                score += sim * 10
+                # Preference Boost (Extra 20 points if it is a priority)
+                if mentee["Pref_Hobbies"]:
+                    score += sim * 20
             except ValueError:
                 pass
+
+        # 4. The Anti-Zero Penalty
+        # Forces the algorithm to completely avoid pairings with zero points
+        if score <= 0:
+            score = -500
 
         return score
 
